@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_statusbarcolor/flutter_statusbarcolor.dart';
 import 'package:gestao_projetos/CadastroPage.dart';
 import 'package:gestao_projetos/EsqueciSenha.dart';
 import 'package:gestao_projetos/HomePage.dart';
+import 'package:http/http.dart' as http;
 
 
 class LoginPage extends StatefulWidget {
@@ -11,6 +14,79 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+
+  TextEditingController _controllerEmailLogin = TextEditingController();
+  TextEditingController _controllerSenhaLogin = TextEditingController();
+
+  void _fazerLogin() async {
+    String _emailLogin = _controllerEmailLogin.text;
+    String _senhaLogin = _controllerSenhaLogin.text;
+    const _url = "http://trass.com.br/api/index.php/";
+     
+    if(_emailLogin != null && _senhaLogin != null && _emailLogin != '' && _senhaLogin != ''){
+      http.Response response = await http.post(
+        _url + "login",
+        headers: {
+          "Content-type" : "application/json; charset=UTF-8"
+        },
+        body: json.encode({
+          "email" : _emailLogin,
+          "senha" : _senhaLogin,
+        })
+      );
+      print("Response: + ${response.body}");
+      if(response.statusCode == '200'){
+        var corporesposta = json.decode( response.body.toString() );
+        print(corporesposta);
+        if(corporesposta.status == "ok"){
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context)=>HomePage() ),
+            (Route<dynamic> route) => false
+          );
+        }
+        else{
+          showDialog(context: context,
+            builder: (context){
+              return AlertDialog(
+                title:Text("Erro"),
+                content: Text(corporesposta),
+                actions : <Widget>[
+                    FlatButton(
+                      child: Text("OK"),
+                          onPressed: () {
+                            Navigator.pop(context);
+                    }
+                  )
+                ]
+              );
+          });
+        }
+      }
+      else{
+        print("Response: + ${response.statusCode}");
+        
+      }
+      
+    }
+    else{
+      showDialog(context: context,
+        builder: (context){
+          return AlertDialog(
+            title:Text("Erro"),
+            content: Text("Login e/ou Senha inválido(s)"),
+            actions : <Widget>[
+                FlatButton(
+                   child: Text("OK"),
+                      onPressed: () {
+                        Navigator.pop(context);
+                }
+               )
+            ]
+           );
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double width=MediaQuery.of(context).size.width;
@@ -44,6 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: TextField(
+                    controller: _controllerEmailLogin,
                     decoration: InputDecoration(
                       hintText: 'E-mail',
                       suffixIcon: Icon(Icons.email),
@@ -57,6 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: TextField(
+                    controller: _controllerSenhaLogin,
                     obscureText: true,
                     decoration: InputDecoration(
                       hintText: 'Senha',
@@ -91,10 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       RaisedButton.icon(
                         onPressed: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context)=>HomePage() ),
-                            (Route<dynamic> route) => false
-                          );
+                          _fazerLogin();
                         },
                         icon: Icon(Icons.login),
                         label: Text('Entrar'),
