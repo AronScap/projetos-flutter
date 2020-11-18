@@ -2,10 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_statusbarcolor/flutter_statusbarcolor.dart';
-import 'package:gestao_projetos/CadastroPage.dart';
-import 'package:gestao_projetos/EsqueciSenha.dart';
 import 'package:gestao_projetos/HomePage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -15,10 +14,30 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
 
+  void _alert(var _title, var _text){
+    showDialog(context: context,
+      builder: (context){
+        return AlertDialog(
+          title:Text(_title),
+          content: Text(_text),
+          actions : <Widget>[
+              FlatButton(
+                  child: Text("OK"),
+                    onPressed: () {
+                      Navigator.pop(context);
+              }
+              )
+          ]
+          );
+    });
+  }
+
+  bool _loginng = false;
   TextEditingController _controllerEmailLogin = TextEditingController();
   TextEditingController _controllerSenhaLogin = TextEditingController();
-
+  
   void _fazerLogin() async {
+    setState(() {_loginng = true;});
     String _emailLogin = _controllerEmailLogin.text;
     String _senhaLogin = _controllerSenhaLogin.text;
     const _url = "http://trass.com.br/api/index.php/";
@@ -26,76 +45,99 @@ class _LoginPageState extends State<LoginPage> {
     if(_emailLogin != null && _senhaLogin != null && _emailLogin != '' && _senhaLogin != ''){
       http.Response response = await http.post(
         _url + "login",
-        headers: {
-          "Content-type" : "application/json; charset=UTF-8"
-        },
+        headers: {"Content-type" : "application/json; charset=UTF-8"},
         body: json.encode({
           "email" : _emailLogin,
           "senha" : _senhaLogin,
         })
       );
-      print("Response: + ${response.body}");
-      if(response.statusCode == '200'){
-        var corporesposta = json.decode( response.body.toString() );
-        print(corporesposta);
-        if(corporesposta.status == "ok"){
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context)=>HomePage() ),
-            (Route<dynamic> route) => false
-          );
+      Map<String,dynamic> corporesposta = json.decode( response.body );
+      if(response.statusCode.toString() == '200'){
+        if(corporesposta["status"] == "ok"){
+          _salvarPreferenciaLogado();
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
         }
         else{
-          showDialog(context: context,
-            builder: (context){
-              return AlertDialog(
-                title:Text("Erro"),
-                content: Text(corporesposta),
-                actions : <Widget>[
-                    FlatButton(
-                      child: Text("OK"),
-                          onPressed: () {
-                            Navigator.pop(context);
-                    }
-                  )
-                ]
-              );
-          });
+          if(corporesposta["status"] == "usernotfound"){
+            showDialog(context: context,
+              builder: (context){
+                return AlertDialog(
+                  title:Text("Erro"),
+                  content: Text("Usuário e/ou senha incorretos."),
+                  actions : <Widget>[
+                      FlatButton(
+                        child: Text("OK"),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        }
+                      ),
+                      FlatButton(
+                        child: Text("Criar conta"),
+                        onPressed: () {Navigator.popAndPushNamed(context, '/createuser');}
+                      ),
+                  ]
+                  );
+            });
+          }
+          else _alert("Erro ao logar","Usuário e/ou senha incorretos!");
         }
+        setState(() {_loginng = false;});
       }
       else{
-        print("Response: + ${response.statusCode}");
-        
+        _alert("Erro inesperado: "+response.statusCode.toString(),"Usuário e/ou senha incorretos");
+        setState(() {_loginng = false;});
       }
       
     }
     else{
-      showDialog(context: context,
-        builder: (context){
-          return AlertDialog(
-            title:Text("Erro"),
-            content: Text("Login e/ou Senha inválido(s)"),
-            actions : <Widget>[
-                FlatButton(
-                   child: Text("OK"),
-                      onPressed: () {
-                        Navigator.pop(context);
-                }
-               )
-            ]
-           );
-      });
+      setState(() {_loginng = false;});
+      _alert("Erro ao logar","Preencha corretamente os campos.");
     }
   }
 
+  bool isLoggedIn = false;
+  
+  @override
+  void initState() {
+    super.initState(); 
+    autoLogIn();
+  }
+
+  void _salvarPreferenciaLogado() async {
+    print("salvando preferencias...");
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool("logado", true);
+  }
+   
+  bool _buscandodadosiniciais = true;
+  void autoLogIn() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool('logado');
+
+    if (isLoggedIn != null) {
+      setState(() {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context)=>HomePage() ),
+          (Route<dynamic> route) => false
+        );
+      });
+      return;
+    }
+    else{
+      setState(() {_buscandodadosiniciais = false;});
+    }
+
+  }
   @override
   Widget build(BuildContext context) {
+    
     double width=MediaQuery.of(context).size.width;
     double height=MediaQuery.of(context).size.height;
     FlutterStatusbarcolor.setStatusBarColor(Color(0xff2e49ad));
     // FlutterStatusbarcolor.setNavigationBarColor(Colors.blue); 
 
     return Scaffold(
-      body: Container( 
+      body: _buscandodadosiniciais ? Container(child: Text("buscando informações iniciais"),) : Container( 
         child: Container(
           height: height,
           width: width,
@@ -152,12 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       GestureDetector(
-                        onTap: (){
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => EsqueciSenha()),
-                          );
-                        },
+                        onTap: (){Navigator.pushNamed(context, '/forgetpass');},
                         child: Text.rich(                        
                           TextSpan(
                             text: 'Esqueceu a senha?',
@@ -167,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         )
                       ),
-                      RaisedButton.icon(
+                      _loginng ? Container(child: Text("Aguarde..."),) : RaisedButton.icon(
                         onPressed: () {
                           _fazerLogin();
                         },
@@ -181,13 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 SizedBox(height:10.0),
                 GestureDetector(
-                  onTap: (){
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => CadastroPage()),
-                    );
-
-                  },
+                  onTap: (){Navigator.pushNamed(context, '/createuser'); },
                   child: Text.rich(
                     TextSpan(
                       text: 'Ainda não possui conta? ',
@@ -203,12 +234,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-
               ],
             ),
           ),
         )
-      )
+      ) 
     );
   }
+
+
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:gestao_projetos/LoginPage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -22,6 +25,50 @@ class _HomePageState extends State<HomePage> {
 
   void _getlista() async {
     
+  }
+
+  
+  bool isLoggedIn = false;
+  @override
+  void initState() {
+    super.initState(); 
+    autoLogIn();
+  }
+  void _salvarPreferenciaLogado() async {
+    print("salvando preferencias...");
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool("logado", true);
+  }
+  void autoLogIn() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool('logado');
+
+    if (isLoggedIn == null) {
+      setState(() {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context)=>LoginPage() ),
+          (Route<dynamic> route) => false
+        );
+      });
+      return;
+    }
+
+  }
+
+  
+  void _delPreferenciaLogado() async {
+    print("Excluindo preferencias...");
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('logado');
+  }
+  void _logOut(){
+    _delPreferenciaLogado();
+    setState(() {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context)=>LoginPage() ),
+        (Route<dynamic> route) => false
+      );
+    });
   }
 
   @override
@@ -83,30 +130,30 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: Icon(Icons.account_circle),
               title: Text('Perfil'),
-              onTap: () {
-                Navigator.pop(context);
-              },
+              onTap: () {Navigator.pushNamed(context, '/profile');},
             ),
             ListTile(
               leading: Icon(Icons.content_paste_outlined),
               title: Text('Meus Projetos'),
               onTap: () {
                 Navigator.pop(context);
+                // setState(() {
+                //   Navigator.of(context).pushAndRemoveUntil(
+                //     MaterialPageRoute(builder: (context)=>LoginPage() ),
+                //     (Route<dynamic> route) => false
+                //   );
+                // }); 
               },
             ),
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('Configurações'),
-              onTap: () {
-                Navigator.pop(context);
-              },
+              onTap: () {Navigator.pushNamed(context, '/settings');},
             ),
             ListTile(
               leading: Icon(Icons.logout),
               title: Text('Sair'),
-              onTap: () {
-                Navigator.pop(context);
-              },
+              onTap: () {_logOut();},
             ),
           ],
         ),
