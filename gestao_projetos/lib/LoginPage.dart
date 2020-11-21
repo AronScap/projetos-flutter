@@ -22,10 +22,10 @@ class _LoginPageState extends State<LoginPage> {
           content: Text(_text),
           actions : <Widget>[
               FlatButton(
-                  child: Text("OK"),
-                    onPressed: () {
-                      Navigator.pop(context);
-              }
+                child: Text("OK"),
+                onPressed: () {
+                  Navigator.pop(context);
+                }
               )
           ]
           );
@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
                   );
             });
           }
-          else _alert("Erro ao logar","Usuário e/ou senha incorretos!");
+          else _alert("Erro ao logar",corporesposta["message"]);
         }
         setState(() {_loginng = false;});
       }
