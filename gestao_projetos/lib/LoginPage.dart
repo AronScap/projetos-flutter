@@ -1,8 +1,8 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_statusbarcolor/flutter_statusbarcolor.dart';
 import 'package:gestao_projetos/HomePage.dart';
+import 'package:gestao_projetos/tools/configs.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,11 +40,12 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {_loginng = true;});
     String _emailLogin = _controllerEmailLogin.text;
     String _senhaLogin = _controllerSenhaLogin.text;
-    const _url = "http://trass.com.br/api/index.php/";
+    var _urla = new GeneralConfigs();
+    var _url = _urla.url_.toString()+"login";
      
     if(_emailLogin != null && _senhaLogin != null && _emailLogin != '' && _senhaLogin != ''){
       http.Response response = await http.post(
-        _url + "login",
+        _url,
         headers: {"Content-type" : "application/json; charset=UTF-8"},
         body: json.encode({
           "email" : _emailLogin,
@@ -58,6 +59,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
         }
         else{
+          print(corporesposta);
           if(corporesposta["status"] == "usernotfound"){
             showDialog(context: context,
               builder: (context){
@@ -79,7 +81,26 @@ class _LoginPageState extends State<LoginPage> {
                   );
             });
           }
-          else _alert("Erro ao logar",corporesposta["message"]);
+          else if(corporesposta["status"] == "userinactived"){
+            showDialog(context: context,
+              builder: (context){
+                return AlertDialog(
+                  title:Text("Erro ao fazer login"),
+                  content: Text(corporesposta["message"]),
+                  actions : <Widget>[
+                      FlatButton(
+                        child: Text("OK"),
+                        onPressed: () {Navigator.pop(context);}
+                      ),
+                      FlatButton(
+                        child: Text("Recuperar Senha"),
+                        onPressed: () {Navigator.popAndPushNamed(context, '/forgetpass');}
+                      ),
+                  ]
+                  );
+            });
+          }
+          else _alert("Erro ao fazer login",corporesposta["message"]);
         }
         setState(() {_loginng = false;});
       }
@@ -108,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool("logado", true);
   }
-   
+  
   bool _buscandodadosiniciais = true;
   void autoLogIn() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -150,13 +171,18 @@ class _LoginPageState extends State<LoginPage> {
                   child: Image.asset('images/login.png',fit: BoxFit.fitWidth,),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.only(left:12,right:12),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Login',style: TextStyle(fontSize: 25.0,fontWeight: FontWeight.bold),),
-                    ],
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [Container(child:Text('Seja bem vindo!',style: TextStyle(fontSize: 15.0,fontWeight: FontWeight.bold),)),]
                   ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left:12,right:12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [Container(child:Text('Login',style: TextStyle(fontSize: 22.0,fontWeight: FontWeight.bold),)),]
+                  )
                 ),
                 SizedBox(height: 10.0,),
                 Padding(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gestao_projetos/LoginPage.dart';
+import 'package:gestao_projetos/tools/configs.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -55,6 +56,55 @@ class _HomePageState extends State<HomePage> {
 
   }
 
+  var _newprojectspin = false;
+  TextEditingController _controllertituloprojeto = TextEditingController();
+  void _newProject() async {
+    setState(() {_newprojectspin = true;});
+    String _titulo = _controllertituloprojeto.text;
+    var _urla = new GeneralConfigs();
+    var _url = _urla.url_.toString() + "newproject";
+    if(_titulo != null && _titulo != ''){
+      http.Response response = await http.post(
+        _url,
+        headers: {"Content-type" : "application/json; charset=UTF-8"},
+        body: json.encode({"nome" : _titulo})
+      );
+      Map<String,dynamic> corporesposta = json.decode( response.body );
+      if(response.statusCode.toString() == '200'){
+        if(corporesposta["status"] == "ok"){
+          print("Projeto cadastrado");
+        }
+        else{
+          print(corporesposta);
+          _alert("Erro ao cadastrar projeto",corporesposta["message"]);
+        }
+        setState(() {_newprojectspin = false;});
+      }
+      else{
+        _alert("Erro inesperado: "+response.statusCode.toString(),"Não foi possível cadastrar projeto");
+        setState(() {_newprojectspin = false;});
+      }      
+    }
+    else{
+      setState(() {_newprojectspin = false;});
+      _alert("Erro ao cadastrar projeto","Preencha corretamente os campos.");
+    }
+  }
+  void _alert(var _title, var _text){
+    showDialog(context: context,
+      builder: (context){
+        return AlertDialog(
+          title:Text(_title),
+          content: Text(_text),
+          actions : <Widget>[
+              FlatButton(
+                child: Text("OK"),
+                onPressed: () {Navigator.pop(context);}
+              )
+          ]
+          );
+    });
+  }
   
   void _delPreferenciaLogado() async {
     print("Excluindo preferencias...");
@@ -77,6 +127,30 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text("Meus Projetos"),
         backgroundColor: Color(0xff391ccb),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(
+              Icons.help,
+              color: Colors.white,
+            ),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Colors.white,
+            ),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.search,
+              color: Colors.white,
+            ),
+            onPressed: () {},
+          ),
+        ],
+
       ),
       drawer: Drawer(
         child: ListView(
@@ -164,22 +238,16 @@ class _HomePageState extends State<HomePage> {
             AlertDialog(
               title: Text("Insira o nome do seu projeto."),
               content: TextField(
-                decoration: InputDecoration(
-                  labelText: "Nome do projeto:",
-                ),
-                onChanged: (text){
-                  print(text);
-                },
+                decoration: InputDecoration(labelText: "Nome do projeto:",),
+                controller: _controllertituloprojeto,
               ),
               actions: [
-                FlatButton(
+                _newprojectspin ? Container() : FlatButton(
                   onPressed: (){Navigator.pop(context);},
                   child: Text("Cancelar")
                 ),
-                FlatButton(
-                  onPressed: (){
-                    
-                  },
+                _newprojectspin ? Container(child:Text("Aguarde...")) : FlatButton(
+                  onPressed: (){_newProject();},
                   child: Text("Salvar")
                 )
               ],

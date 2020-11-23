@@ -23,5 +23,4 @@ void main() {
     home: LoginPage(),
     routes: Routes().routes_,
   ));
-} 
-
+}
