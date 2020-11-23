@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gestao_projetos/LoginPage.dart';
+import 'package:gestao_projetos/tools/Projeto.dart';
 import 'package:gestao_projetos/tools/configs.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -18,22 +19,30 @@ class _HomePageState extends State<HomePage> {
   void _updateitems (int oldIndex,int  newIndex){
     setState(() {
       if(newIndex > oldIndex)newIndex-=1;
-      var x = items.removeAt(oldIndex);
-      items.insert(newIndex,x);
+      var x = _projetos.removeAt(oldIndex);
+      _projetos.insert(newIndex,x);
     });
   }
-  List items = [];
-
-  void _getlista() async {
-    
+  
+  List<Projeto> _projetos = [
+    Projeto("Projeto 1"),
+    Projeto("Projeto 2"),
+    Projeto("Projeto teste"),
+  ];
+  Future<Map> _getlista() async {
+    var _urla = new GeneralConfigs();
+    var _url = _urla.url_.toString() + "getprojects";
+    http.Response response = await http.get(_url);
+    print(response.body);
+    return json.decode( response.body );
   }
-
   
   bool isLoggedIn = false;
   @override
   void initState() {
     super.initState(); 
     autoLogIn();
+    _getlista();
   }
   void _salvarPreferenciaLogado() async {
     print("salvando preferencias...");
@@ -121,6 +130,33 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _getinfosuser() async {
+    var _urla = new GeneralConfigs();
+    var _url = _urla.url_.toString() + "getinfosuser";
+     
+    // http.Response response = await http.post(
+    //   _url,
+    //   headers: {"Content-type" : "application/json; charset=UTF-8"},
+    //   body: json.encode({"nome" : token_})
+    // );
+    // Map<String,dynamic> corporesposta = json.decode( response.body );
+    // if(response.statusCode.toString() == '200'){
+    //   if(corporesposta["status"] == "ok"){
+    //     print("Projeto cadastrado");
+    //   }
+    //   else{
+    //     print(corporesposta);
+    //     _alert("Erro ao cadastrar projeto",corporesposta["message"]);
+    //   }
+    //   setState(() {_newprojectspin = false;});
+    // }
+    // else{
+    //   _alert("Erro inesperado: "+response.statusCode.toString(),"Não foi possível cadastrar projeto");
+    //   setState(() {_newprojectspin = false;});
+    // }      
+    
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,7 +205,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            "Gestão de Projetos Pessoais",
+                            "MGP - Minha Gestão Pessoal",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -257,32 +293,56 @@ class _HomePageState extends State<HomePage> {
         child: Icon(Icons.add),
         backgroundColor: Colors.blueGrey,
       ),
-      body: Padding(
-        padding: EdgeInsets.only(left: 10,right: 10),
-        child: items.length > 0 ? ReorderableListView(
-          children: items.map((index){
-            return Card(
-              key: ObjectKey(index),
-              child: ListTile(
-                key: ObjectKey(index),
-                leading: Icon(Icons.content_paste),
-                title: Text('One-line with leading widget'),
-                subtitle: Text("Projeto ${index}"),
-                trailing: Icon(Icons.electric_moped_sharp),
+      body: FutureBuilder<Map>(
+        future: _getlista(),
+        builder: (context,snapshot){
+          String result;
+          switch( snapshot.connectionState ){
+            case ConnectionState.none:
+            case ConnectionState.waiting:
+              result = "0";
+              break;
+            case ConnectionState.active:
+            case ConnectionState.done:
+              if(snapshot.hasError)result = "1";
+              else{
+                print(snapshot.data);
+                result = "Resultado: "+snapshot.data["titulo"];
+              }
+              break;
+          }
+          if(result == "0") return Center(child:CircularProgressIndicator() );
+          else if(result == "1"){
+            return Center(child:Text("Erro ao carregar projetos! Tente novamente mais tarde!"));
+          } 
+          else return Padding(
+            padding: EdgeInsets.only(left: 10,right: 10),
+            child: _projetos.length > 0 ? ReorderableListView(
+              children: _projetos.map((index){
+                return Card(
+                  key: ObjectKey(index),
+                  child: ListTile(
+                    key: ObjectKey(index),
+                    leading: Icon(Icons.content_paste),
+                    title: Text('One-line with leading widget'),
+                    subtitle: Text("Projeto ${index}"),
+                    trailing: Icon(Icons.electric_moped_sharp),
+                  )
+                );
+              }).toList(),
+              onReorder: _updateitems,
+            ) : Container(
+              padding: EdgeInsets.only(top: 20),
+              child:Center( 
+                child: Text(
+                  "Nenhum projeto criado ainda!",
+                  textAlign: TextAlign.center,
+                )
               )
-            );
-          }).toList(),
-          onReorder: _updateitems,
-        ) : Container(
-          padding: EdgeInsets.only(top: 20),
-          child:Center( 
-            child: Text(
-              "Nenhum projeto criado ainda!",
-              textAlign: TextAlign.center,
-            )
-          )
-        ),
-      ),
+            ),
+          );
+        }
+      )
     );
   }
 }
