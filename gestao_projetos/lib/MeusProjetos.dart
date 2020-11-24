@@ -3,19 +3,23 @@ import 'package:gestao_projetos/LoginPage.dart';
 import 'package:gestao_projetos/tools/Projeto.dart';
 import 'package:gestao_projetos/tools/configs.dart';
 import 'package:http/http.dart' as http;
+import 'package:loadmore/loadmore.dart';
 import 'dart:convert';
 import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 
-class HomePage extends StatefulWidget {
+class MeusProjetos extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _MeusProjetosState createState() => _MeusProjetosState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _MeusProjetosState extends State<MeusProjetos> {
   
+
+
+
   void _updateitems (int oldIndex,int  newIndex){
     setState(() {
       if(newIndex > oldIndex)newIndex-=1;
@@ -23,9 +27,6 @@ class _HomePageState extends State<HomePage> {
       _projetos.insert(newIndex,x);
     });
   }
-  
-  int present = 0;
-  int perPage = 15;
 
   List<Projeto> _projetos = [
     Projeto("01 1"),
@@ -197,6 +198,34 @@ class _HomePageState extends State<HomePage> {
   }
 
 
+
+  int get count => list.length;
+
+  List<int> list = [];
+ 
+
+  void load() {
+    print("load");
+    setState(() {
+      list.addAll(List.generate(15, (v) => v));
+      print("data count = ${list.length}");
+    });
+  } 
+  Future<bool> _loadMore() async {
+    print("onLoadMore");
+    await Future.delayed(Duration(seconds: 0, milliseconds: 2000));
+    load();
+    return true;
+  }
+
+  Future<void> _refresh() async {
+    await Future.delayed(Duration(seconds: 0, milliseconds: 2000));
+    list.clear();
+    load();
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -280,7 +309,7 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: Icon(Icons.account_circle),
               title: Text('Perfil'),
-              onTap: () {Navigator.pushNamed(context, '/home');},
+              onTap: () {Navigator.pushNamed(context, '/profile');},
             ),
             ListTile(
               leading: Icon(Icons.content_paste_outlined),
@@ -333,66 +362,38 @@ class _HomePageState extends State<HomePage> {
         child: Icon(Icons.add),
         backgroundColor: Colors.blueGrey,
       ),
-      body: FutureBuilder<Map>(
-        future: _getlista(),
-        builder: (context,snapshot){
-          String result;
-          switch( snapshot.connectionState ){
-            case ConnectionState.none:
-            case ConnectionState.waiting:
-              result = "0";
-              break;
-            case ConnectionState.active:
-            case ConnectionState.done:
-              if(snapshot.hasError)result = "1";
-              else{
-                print(snapshot.data);
-                result = "Resultado: "+snapshot.data["titulo"];
-              }
-              break;
-          }
-          // if(result == "0") return Center(child:CircularProgressIndicator() );
-          // else if(result == "1") return Center(child:Text("Erro ao carregar projetos! Tente novamente mais tarde!"));
-          // else 
-          return NotificationListener<ScrollNotification>(
-            onNotification: (ScrollNotification scrollInfo) {
-              if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) { 
-                _getmoreprojetos();
-                print("Carregando...");
-              }
-            },
-            child:RefreshIndicator(
-              onRefresh: (){return _getlista();},
-              child:Padding(
-                padding: EdgeInsets.only(left: 10,right: 10),
-                child: _projetos.length > 0 ? ReorderableListView(
-                  children: _projetos.map((index){
-                    return Card(
+      body: Container(
+        child: RefreshIndicator(
+          child: LoadMore(
+            // isFinish: count >= 60,
+            onLoadMore: _loadMore,
+            child: ListView.builder(
+              itemBuilder: (BuildContext context, int index) {
+                return Container(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 10,right: 10),
+                    child: Card(
                       key: ObjectKey(index),
                       child: ListTile(
                         key: ObjectKey(index),
                         leading: Icon(Icons.content_paste),
-                        title: Text('${index.titulo.toString()}'),
-                        subtitle: Text("Projeto ${index.hashCode.toString()}"),
+                        title: Text('${list[index].toString()}'),
+                        subtitle: Text("Projeto ${list[index].toString()}"),
                         trailing: Icon(Icons.electric_moped_sharp),
                       )
-                    );
-                  }).toList(),
-                  onReorder: _updateitems,
-                ) : Container(
-                  padding: EdgeInsets.only(top: 20),
-                  child:Center( 
-                    child: Text(
-                      "Nenhum projeto criado ainda!",
-                      textAlign: TextAlign.center,
-                    )
-                  )
-                ),
-              )
-            )
-          );
-        }
-      )
+                    ),
+                  ),
+                );
+              },
+              itemCount: count,
+            ),
+            whenEmptyLoad: false,
+            delegate: DefaultLoadMoreDelegate(),
+            textBuilder: DefaultLoadMoreTextBuilder.chinese,
+          ),
+          onRefresh: _refresh,
+        ),
+      ),
     );
   }
 }
