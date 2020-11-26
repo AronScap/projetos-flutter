@@ -24,8 +24,13 @@ class _HomePageState extends State<HomePage> {
     });
   }
   
-  int present = 0;
-  int perPage = 15;
+
+  var present = 0;
+  var perPage = 15;
+  var _nomeusario = "";
+  var _emailusuario = "";
+  var _firstaccess = false;
+
 
   List<Projeto> _projetos = [
     Projeto("01 1"),
@@ -83,25 +88,41 @@ class _HomePageState extends State<HomePage> {
     autoLogIn();
     // _getlista();
   }
-  void _salvarPreferenciaLogado() async {
-    print("salvando preferencias...");
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool("logado", true);
-  }
+  // void _salvarPreferenciaLogado() async {
+  //   print("salvando preferencias...");
+  //   final prefs = await SharedPreferences.getInstance();
+  //   prefs.setBool("logado", true);
+  // }
   void autoLogIn() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool isLoggedIn = prefs.getBool('logado');
+    final String _tokenuserlogado = prefs.getString('tokenuserlogado');
+    print("auto login home...");
+
+    var _urla = new GeneralConfigs();
+    var _url = _urla.url_.toString() + "getinfosuser";
+    http.Response response = await http.post(_url,headers: {"Content-type" : "application/json; charset=UTF-8"},body: json.encode({"token" : _tokenuserlogado.toString() }));
+    Map<String,dynamic> corporesposta = json.decode( response.body );
+    print(corporesposta);
+    if(response.statusCode.toString() == '200'){
+      if(corporesposta["status"] == "ok"){
+        setState(() {
+          _nomeusario = corporesposta["nomecompleto"];
+          _emailusuario = corporesposta["email"];
+          _firstaccess = corporesposta["firstaccessuser"];
+          prefs.setBool('logado', true);
+          prefs.setString('tokenuserlogado', corporesposta["novotoken"]);
+        });
+      }
+      else _alert("Erro ao cadastrar informações do usuário",corporesposta["message"]);
+    }
+    else _alert("Erro inesperado: "+response.statusCode.toString(),"Não foi possível carregar informações do usuário");    
+    
 
     if (isLoggedIn == null) {
-      setState(() {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context)=>LoginPage() ),
-          (Route<dynamic> route) => false
-        );
-      });
+      setState(() {Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context)=>LoginPage() ),(Route<dynamic> route) => false);});
       return;
     }
-
   }
 
   var _newprojectspin = false;
@@ -122,10 +143,7 @@ class _HomePageState extends State<HomePage> {
         if(corporesposta["status"] == "ok"){
           print("Projeto cadastrado");
         }
-        else{
-          print(corporesposta);
-          _alert("Erro ao cadastrar projeto",corporesposta["message"]);
-        }
+        else _alert("Erro ao cadastrar projeto",corporesposta["message"]);
         setState(() {_newprojectspin = false;});
       }
       else{
@@ -158,44 +176,13 @@ class _HomePageState extends State<HomePage> {
     print("Excluindo preferencias...");
     final prefs = await SharedPreferences.getInstance();
     prefs.remove('logado');
+    prefs.remove('tokenuserlogado');
   }
   void _logOut(){
     _delPreferenciaLogado();
-    setState(() {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context)=>LoginPage() ),
-        (Route<dynamic> route) => false
-      );
-    });
+    setState(() {Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context)=>LoginPage() ),(Route<dynamic> route) => false);});
   }
-
-  void _getinfosuser() async {
-    var _urla = new GeneralConfigs();
-    var _url = _urla.url_.toString() + "getinfosuser";
-     
-    // http.Response response = await http.post(
-    //   _url,
-    //   headers: {"Content-type" : "application/json; charset=UTF-8"},
-    //   body: json.encode({"nome" : token_})
-    // );
-    // Map<String,dynamic> corporesposta = json.decode( response.body );
-    // if(response.statusCode.toString() == '200'){
-    //   if(corporesposta["status"] == "ok"){
-    //     print("Projeto cadastrado");
-    //   }
-    //   else{
-    //     print(corporesposta);
-    //     _alert("Erro ao cadastrar projeto",corporesposta["message"]);
-    //   }
-    //   setState(() {_newprojectspin = false;});
-    // }
-    // else{
-    //   _alert("Erro inesperado: "+response.statusCode.toString(),"Não foi possível cadastrar projeto");
-    //   setState(() {_newprojectspin = false;});
-    // }      
-    
-  }
-
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +241,7 @@ class _HomePageState extends State<HomePage> {
                           Container(
                             padding: EdgeInsets.only(top:32),
                             child:Text(
-                              'Aron Scapinello Selhorst',
+                              _nomeusario,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
@@ -263,7 +250,7 @@ class _HomePageState extends State<HomePage> {
                             )
                           ),
                           Container(child:Text(
-                            'aronscapinello@gmail.com',
+                            _emailusuario,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
@@ -333,65 +320,76 @@ class _HomePageState extends State<HomePage> {
         child: Icon(Icons.add),
         backgroundColor: Colors.blueGrey,
       ),
-      body: FutureBuilder<Map>(
-        future: _getlista(),
-        builder: (context,snapshot){
-          String result;
-          switch( snapshot.connectionState ){
-            case ConnectionState.none:
-            case ConnectionState.waiting:
-              result = "0";
-              break;
-            case ConnectionState.active:
-            case ConnectionState.done:
-              if(snapshot.hasError)result = "1";
-              else{
-                print(snapshot.data);
-                result = "Resultado: "+snapshot.data["titulo"];
-              }
-              break;
-          }
-          // if(result == "0") return Center(child:CircularProgressIndicator() );
-          // else if(result == "1") return Center(child:Text("Erro ao carregar projetos! Tente novamente mais tarde!"));
-          // else 
-          return NotificationListener<ScrollNotification>(
-            onNotification: (ScrollNotification scrollInfo) {
-              if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) { 
-                _getmoreprojetos();
-                print("Carregando...");
-              }
-            },
-            child:RefreshIndicator(
-              onRefresh: (){return _getlista();},
-              child:Padding(
-                padding: EdgeInsets.only(left: 10,right: 10),
-                child: _projetos.length > 0 ? ReorderableListView(
-                  children: _projetos.map((index){
-                    return Card(
-                      key: ObjectKey(index),
-                      child: ListTile(
-                        key: ObjectKey(index),
-                        leading: Icon(Icons.content_paste),
-                        title: Text('${index.titulo.toString()}'),
-                        subtitle: Text("Projeto ${index.hashCode.toString()}"),
-                        trailing: Icon(Icons.electric_moped_sharp),
+      body: Container(
+        child: Column(
+          children: [
+            _firstaccess ? Container(
+              child: Center(child:Text("Olá, seja bem vindo!")),
+            ) : Container(),
+            Expanded(
+              child:   FutureBuilder<Map>(
+                future: _getlista(),
+                builder: (context,snapshot){
+                  String result;
+                  switch( snapshot.connectionState ){
+                    case ConnectionState.none:
+                    case ConnectionState.waiting:
+                      result = "0";
+                      break;
+                    case ConnectionState.active:
+                    case ConnectionState.done:
+                      if(snapshot.hasError)result = "1";
+                      else{
+                        print(snapshot.data);
+                        result = "Resultado: "+snapshot.data["titulo"];
+                      }
+                      break;
+                  }
+                  // if(result == "0") return Center(child:CircularProgressIndicator() );
+                  // else if(result == "1") return Center(child:Text("Erro ao carregar projetos! Tente novamente mais tarde!"));
+                  // else 
+                  return NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification scrollInfo) {
+                      if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) { 
+                        _getmoreprojetos();
+                        print("Carregando...");
+                      }
+                    },
+                    child:RefreshIndicator(
+                      onRefresh: (){return _getlista();},
+                      child:Padding(
+                        padding: EdgeInsets.only(left: 10,right: 10),
+                        child: _projetos.length > 0 ? ReorderableListView(
+                          children: _projetos.map((index){
+                            return Card(
+                              key: ObjectKey(index),
+                              child: ListTile(
+                                key: ObjectKey(index),
+                                leading: Icon(Icons.content_paste),
+                                title: Text('${index.titulo.toString()}'),
+                                subtitle: Text("Projeto ${index.hashCode.toString()}"),
+                                trailing: Icon(Icons.electric_moped_sharp),
+                              )
+                            );
+                          }).toList(),
+                          onReorder: _updateitems,
+                        ) : Container(
+                          padding: EdgeInsets.only(top: 20),
+                          child:Center( 
+                            child: Text(
+                              "Nenhum projeto criado ainda!",
+                              textAlign: TextAlign.center,
+                            )
+                          )
+                        ),
                       )
-                    );
-                  }).toList(),
-                  onReorder: _updateitems,
-                ) : Container(
-                  padding: EdgeInsets.only(top: 20),
-                  child:Center( 
-                    child: Text(
-                      "Nenhum projeto criado ainda!",
-                      textAlign: TextAlign.center,
                     )
-                  )
-                ),
+                  );
+                }
               )
             )
-          );
-        }
+          ],
+        ),
       )
     );
   }

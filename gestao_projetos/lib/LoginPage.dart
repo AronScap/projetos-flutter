@@ -44,24 +44,22 @@ class _LoginPageState extends State<LoginPage> {
     var _url = _urla.url_.toString()+"login";
      
     if(_emailLogin != null && _senhaLogin != null && _emailLogin != '' && _senhaLogin != ''){
-      http.Response response = await http.post(
-        _url,
+      http.Response response = await http.post( _url,
         headers: {"Content-type" : "application/json; charset=UTF-8"},
-        body: json.encode({
-          "email" : _emailLogin,
-          "senha" : _senhaLogin,
-        })
+        body: json.encode({"email" : _emailLogin,"senha" : _senhaLogin,})
       );
       Map<String,dynamic> corporesposta = json.decode( response.body );
       if(response.statusCode.toString() == '200'){
         if(corporesposta["status"] == "ok"){
-          _salvarPreferenciaLogado();
+          print("response login: "+ corporesposta.toString());
+          _salvarPreferenciaLogado(corporesposta["token"].toString());
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
         }
         else{
           print(corporesposta);
           if(corporesposta["status"] == "usernotfound"){
-            showDialog(context: context,
+            showDialog(
+              context: context,
               builder: (context){
                 return AlertDialog(
                   title:Text("Erro"),
@@ -69,17 +67,16 @@ class _LoginPageState extends State<LoginPage> {
                   actions : <Widget>[
                       FlatButton(
                         child: Text("OK"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        }
+                        onPressed: () {Navigator.pop(context);}
                       ),
                       FlatButton(
                         child: Text("Criar conta"),
                         onPressed: () {Navigator.popAndPushNamed(context, '/createuser');}
                       ),
                   ]
-                  );
-            });
+                );
+              }
+            );
           }
           else if(corporesposta["status"] == "userinactived"){
             showDialog(context: context,
@@ -124,10 +121,12 @@ class _LoginPageState extends State<LoginPage> {
     autoLogIn();
   }
 
-  void _salvarPreferenciaLogado() async {
+  void _salvarPreferenciaLogado(var token) async {
     print("salvando preferencias...");
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool("logado", true);
+    print("Token login: " + token);
+    prefs.setString("tokenuserlogado", token);
   }
   
   bool _buscandodadosiniciais = true;
@@ -144,9 +143,7 @@ class _LoginPageState extends State<LoginPage> {
       });
       return;
     }
-    else{
-      setState(() {_buscandodadosiniciais = false;});
-    }
+    else setState(() {_buscandodadosiniciais = false;});
 
   }
   @override
@@ -224,16 +221,12 @@ class _LoginPageState extends State<LoginPage> {
                         child: Text.rich(                        
                           TextSpan(
                             text: 'Esqueceu a senha?',
-                            style: TextStyle(
-                              color: Color(0xffEE7B23)
-                            ),
+                            style: TextStyle(color: Color(0xffEE7B23)),
                           ),
                         )
                       ),
                       _loginng ? Container(child: Text("Aguarde..."),) : RaisedButton.icon(
-                        onPressed: () {
-                          _fazerLogin();
-                        },
+                        onPressed: () {_fazerLogin();},
                         icon: Icon(Icons.login),
                         label: Text('Entrar'),
                         textColor: Colors.white,
@@ -251,9 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         TextSpan(
                           text: 'Cadastre-se',
-                          style: TextStyle(
-                            color: Color(0xffEE7B23)
-                          ),
+                          style: TextStyle(color: Color(0xffEE7B23)),
                         ),
                       ]
                     ),
